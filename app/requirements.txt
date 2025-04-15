@@ -1,0 +1,16 @@
+google-auth-oauthlib>=0.4.6
+google-api-python-client>=2.0.0
+numpy==1.24.3
+pandas==2.0.3
+requests>=2.26.0
+python-dotenv==1.0.0
+boto3>=1.26.0
+botocore>=1.29.0
+psycopg2-binary==2.9.9
+streamlit==1.29.0
+plotly==5.18.0
+sqlalchemy==2.0.23
+ijson==3.2.3 
+PyYAML==6.0.1
+sqlalchemy==2.0.23
+altair==5.1.0

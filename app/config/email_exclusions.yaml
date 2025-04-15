@@ -1,0 +1,30 @@
+# Email exclusions configuration
+
+# Individual email addresses to exclude
+individual_emails:
+  - name@domain.com
+
+# Email domain patterns to exclude
+domain_patterns:
+  - "@resource.calendar.google.com"
+  - "@group.calendar.google.com"
+  - "@conference.zoom.us"
+
+# Email prefix patterns to exclude
+prefix_patterns:
+  - "meetingroom-"
+
+# Department emails to exclude
+department_emails:
+  - "facilities@"
+  - "it-support@"
+  - "office-admin@"
+
+# Meeting summery keywords to exclude
+meeting_keywords:
+  - "pto"
+  - "ooo"
+  - "vacation"
+  - "ooto"
+  - "lunch"
+  - "dinner"
