@@ -1,9 +1,5 @@
 CREATE TABLE IF NOT EXISTS meetings (
     id SERIAL PRIMARY KEY,
-    user_email VARCHAR(255) NOT NULL,
-    department VARCHAR(255),
-    division VARCHAR(255),
-    subdepartment VARCHAR(255),
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
     duration_minutes INTEGER,
@@ -14,7 +10,14 @@ CREATE TABLE IF NOT EXISTS meetings (
     attendees_emails TEXT[],
     attendees_needs_action INTEGER,
     summary TEXT,
-    year INTEGER,
+    user_email VARCHAR(255) NOT NULL,
+    division VARCHAR(255),
+    department VARCHAR(255),
+    subdepartment VARCHAR(255),
+    unique_departments INTEGER,
+    departments_list TEXT[],
+    meeting_size_category VARCHAR(50),
+    is_one_on_one BOOLEAN,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
