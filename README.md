@@ -192,4 +192,3 @@ MIT License - see [LICENSE](LICENSE) file.
 ## 🆘 Support
 
 - **Issues**: [GitHub Issues](../../issues)
-- **Wiki**: [Project Documentation](../../wiki)
