@@ -30,6 +30,11 @@ chmod 755 /var/log/app
 # Install cron
 apt-get update && apt-get install -y cron
 
+# Fetch the latest meeting data
+echo "Fetching latest meeting data..."
+python /app/fetch_data.py --days 30
+echo "Data fetching complete"
+
 # Cron logging
 touch /var/log/app/cron.log
 touch /var/log/app/test-cron.log
@@ -37,7 +42,7 @@ chown appuser:appuser /var/log/app/cron.log
 chown appuser:appuser /var/log/app/test-cron.log
 
 # Make test-cron.sh executable
-chmod +x /app/test-cron.sh
+chmod +x /app/testing/test-cron.sh
 
 # Install crontab
 crontab /app/crontab
@@ -51,4 +56,4 @@ tail -f /var/log/app/test-cron.log &
 
 # Start Streamlit
 echo "Starting Streamlit..."
-exec streamlit run --server.address 0.0.0.0 --server.port 8501 dashboard.py
+exec streamlit run --server.address 0.0.0.0 --server.port 8501 main_dashboard.py

@@ -1,0 +1,17 @@
+functions-framework>=3.0.0
+cloud-sql-python-connector[pg8000]>=1.0.0
+psycopg2-binary>=2.9.0
+google-cloud-logging>=3.0.0
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
+requests>=2.25.0
+flask>=2.0.0
+streamlit>=1.28.0
+pandas>=2.0.0
+plotly>=5.0.0
+sqlalchemy>=1.4.0
+pg8000>=1.29.0
+pyyaml>=6.0
+toml>=0.10.2

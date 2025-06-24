@@ -1,0 +1,431 @@
+name: 🚀 Calendar Insights CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_app:
+        description: 'Deploy self-hosted app/ application'
+        required: false
+        default: false
+        type: boolean
+      deploy_app_gcp:
+        description: 'Deploy app-gcp/ to Google Cloud Run'
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - development
+        - staging
+      force_rebuild:
+        description: 'Force rebuild Docker images'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PROJECT_ID: cal-insights-460511
+  REGION: europe-west3
+
+jobs:
+  # Security scanning for the entire repository
+  security:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Check for common secret patterns
+          if grep -r -E "(password|secret|token|key).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" .; then
+            echo "❌ Potential hardcoded secrets found!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets detected"
+
+  # Code quality checks for both apps
+  quality:
+    name: 📊 Code Quality
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [app, app-gcp]
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies for ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 isort
+          pip install -r requirements.txt
+
+      - name: Run Black formatting check
+        working-directory: ${{ matrix.app }}
+        run: black --check --diff .
+
+      - name: Run isort import sorting check
+        working-directory: ${{ matrix.app }}
+        run: isort --check-only --diff .
+
+      - name: Run Flake8 linting
+        working-directory: ${{ matrix.app }}
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  # Test both applications
+  test:
+    name: 🧪 Test Applications
+    runs-on: ubuntu-latest
+    needs: [security, quality]
+    strategy:
+      matrix:
+        app: [app, app-gcp]
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies for ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: Test Python imports and basic syntax
+        working-directory: ${{ matrix.app }}
+        run: |
+          # Test that all Python files can be imported without errors
+          python -c "
+          import os
+          import sys
+          sys.path.insert(0, '.')
+          
+          # Test basic imports for critical modules
+          try:
+              if '${{ matrix.app }}' == 'app':
+                  import database
+                  import main_dashboard
+                  print('✅ App imports successful')
+              else:
+                  import database
+                  import dashboard  
+                  import calendar_service
+                  print('✅ App-GCP imports successful')
+          except Exception as e:
+              print(f'❌ Import error: {e}')
+              sys.exit(1)
+          "
+
+  # Build Docker images for both apps
+  build:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        app: [app, app-gcp]
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: |
+          docker build -t calendar-insights-${{ matrix.app }}:${{ github.sha }} .
+          docker build -t calendar-insights-${{ matrix.app }}:latest .
+
+      - name: Test Docker image
+        working-directory: ${{ matrix.app }}
+        run: |
+          # Basic container smoke test
+          if [ "${{ matrix.app }}" == "app" ]; then
+            # For app/ - test that supervisor starts
+            docker run --rm -d --name test-${{ matrix.app }} calendar-insights-${{ matrix.app }}:latest
+            sleep 10
+            docker logs test-${{ matrix.app }}
+            docker stop test-${{ matrix.app }} || true
+          else
+            # For app-gcp/ - test that streamlit starts
+            docker run --rm -d --name test-${{ matrix.app }} -p 8080:8080 calendar-insights-${{ matrix.app }}:latest &
+            sleep 15
+            # Check if container is running
+            if docker ps | grep test-${{ matrix.app }}; then
+              echo "✅ Container started successfully"
+              docker stop test-${{ matrix.app }} || true
+            else
+              echo "❌ Container failed to start"
+              docker logs test-${{ matrix.app }} || true
+              exit 1
+            fi
+          fi
+
+  # Deploy app-gcp to Google Cloud
+  deploy-gcp:
+    name: 🚀 Deploy app-gcp to Google Cloud
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_app_gcp == 'true')
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build and push Docker image
+        working-directory: app-gcp
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          SERVICE_NAME="calendar-insights"
+          if [ "$ENVIRONMENT" != "production" ]; then
+            SERVICE_NAME="calendar-insights-$ENVIRONMENT"
+          fi
+          
+          docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} .
+          docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:latest .
+          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }}
+          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:latest
+          
+          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
+
+      - name: Deploy to Cloud Run
+        working-directory: app-gcp
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          
+          gcloud run deploy $SERVICE_NAME \
+            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} \
+            --platform managed \
+            --region $REGION \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 2Gi \
+            --cpu 2 \
+            --max-instances 10 \
+            --timeout 300 \
+            --set-env-vars="ENVIRONMENT=$ENVIRONMENT" \
+            --project $PROJECT_ID
+
+      - name: Get service URL
+        run: |
+          URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
+          echo "🌐 app-gcp deployed at: $URL"
+          echo "::notice title=app-gcp Deployment::Successfully deployed to $URL"
+
+  # Deploy self-hosted app
+  deploy-app:
+    name: 🏠 Deploy self-hosted app
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_app == 'true')
+    environment: ${{ github.event.inputs.environment || 'development' }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production-ready app/ image
+        working-directory: app
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'development' }}"
+          
+          # Build with environment-specific tag
+          docker build -t calendar-insights-app:$ENVIRONMENT .
+          docker build -t calendar-insights-app:latest .
+          
+          echo "✅ Self-hosted app Docker image built successfully"
+
+      - name: Create deployment package
+        working-directory: app
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'development' }}"
+          
+          # Create deployment directory
+          mkdir -p ../deployment-package
+          
+          # Copy necessary files
+          cp docker-compose.yml ../deployment-package/
+          cp Dockerfile ../deployment-package/
+          cp requirements.txt ../deployment-package/
+          cp -r config/ ../deployment-package/ 2>/dev/null || true
+          
+          # Create deployment script
+          cat > ../deployment-package/deploy.sh << 'EOF'
+          #!/bin/bash
+          echo "🚀 Deploying Calendar Insights Self-Hosted Application"
+          echo "Environment: $ENVIRONMENT"
+          
+          # Check if docker-compose is available
+          if command -v docker-compose &> /dev/null; then
+              echo "📦 Using docker-compose for deployment..."
+              docker-compose up -d
+          elif command -v docker &> /dev/null; then
+              echo "🐳 Using Docker for deployment..."
+              docker build -t calendar-insights-app .
+              docker run -d -p 8501:8501 --name calendar-insights calendar-insights-app
+          else
+              echo "❌ Docker or docker-compose not found!"
+              exit 1
+          fi
+          
+          echo "✅ Deployment completed!"
+          echo "🌐 Access the application at: http://localhost:8501"
+          EOF
+          
+          chmod +x ../deployment-package/deploy.sh
+          
+          # Create README for deployment
+          cat > ../deployment-package/README.md << 'EOF'
+          # Calendar Insights Self-Hosted Deployment
+          
+          ## Quick Start
+          ```bash
+          ./deploy.sh
+          ```
+          
+          ## Manual Deployment
+          
+          ### Using Docker Compose (Recommended)
+          ```bash
+          docker-compose up -d
+          ```
+          
+          ### Using Docker
+          ```bash
+          docker build -t calendar-insights-app .
+          docker run -d -p 8501:8501 --name calendar-insights calendar-insights-app
+          ```
+          
+          ## Access
+          - Application: http://localhost:8501
+          - Environment: $ENVIRONMENT
+          
+          ## Configuration
+          - Edit `config/` files for customization
+          - Check `docker-compose.yml` for service configuration
+          EOF
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: calendar-insights-app-${{ github.event.inputs.environment || 'development' }}
+          path: deployment-package/
+          retention-days: 30
+
+      - name: Deployment summary
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'development' }}"
+          cat << EOF
+          ## 🏠 Self-Hosted App Deployment Ready
+          
+          ### Deployment Package Created
+          - **Environment**: $ENVIRONMENT
+          - **Artifacts**: Available as workflow artifacts
+          - **Package Contents**:
+            - Docker Compose configuration
+            - Deployment script (\`deploy.sh\`)
+            - Configuration files
+            - Setup documentation
+          
+          ### Next Steps:
+          1. Download the deployment package from workflow artifacts
+          2. Extract to your server
+          3. Run \`./deploy.sh\` or use docker-compose
+          4. Access at http://localhost:8501
+          
+          ### Features:
+          - Complete calendar analytics pipeline
+          - Local PostgreSQL database
+          - Supervisor process management
+          - Cron job scheduling
+          EOF
+
+  # Manual deployment control
+  deployment-status:
+    name: 📊 Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-gcp, deploy-app]
+    if: always() && github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary"
+          echo ""
+          
+          if [ "${{ github.event.inputs.deploy_app_gcp }}" == "true" ]; then
+            if [ "${{ needs.deploy-gcp.result }}" == "success" ]; then
+              echo "✅ **app-gcp**: Successfully deployed to Google Cloud Run"
+            else
+              echo "❌ **app-gcp**: Deployment failed"
+            fi
+          else
+            echo "⏭️ **app-gcp**: Skipped (not requested)"
+          fi
+          
+          echo ""
+          
+          if [ "${{ github.event.inputs.deploy_app }}" == "true" ]; then
+            if [ "${{ needs.deploy-app.result }}" == "success" ]; then
+              echo "✅ **app**: Self-hosted deployment package ready"
+            else
+              echo "❌ **app**: Deployment preparation failed"
+            fi
+          else
+            echo "⏭️ **app**: Skipped (not requested)"
+          fi
+          
+          echo ""
+          echo "### Environment: ${{ github.event.inputs.environment || 'default' }}"
+          echo "### Triggered by: @${{ github.actor }}"
+          echo "### Commit: ${{ github.sha }}" 
