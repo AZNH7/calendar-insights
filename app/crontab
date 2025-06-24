@@ -2,5 +2,5 @@
 0 1 * * * cd /app && /usr/local/bin/python /app/load_json_data.py >> /var/log/app/cron.log 2>&1
 
 # Test job - runs every 5 minutes
-*/5 * * * * /app/test-cron.sh >> /var/log/app/test-cron.log 2>&1
+*/5 * * * * /app/testing/test-cron.sh >> /var/log/app/test-cron.log 2>&1
 

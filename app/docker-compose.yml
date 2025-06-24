@@ -1,19 +1,15 @@
 
 services:
   app:
-    image: ${ECR_REPO_URI}:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${ECR_REPO_URI:-calendar-insights}:latest
     environment:
       - SQLITE_DB_PATH=/data/sqlite/meetings.db
-      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_DEFAULT_REGION=${AWS_REGION:-us-west-2}
     volumes:
-      - type: volume
-        source: efs-sqlite
-        target: /data/sqlite
-        volume:
-        driver_opts:
-          type: nfs
-          o: addr=${EFS_DNS_NAME},nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2
-          device: :/${EFS_MOUNT_POINT}
+      - ../data/sqlite:/data/sqlite
     network_mode: "host"
     ports:
       - "127.0.0.1:8501:8501"

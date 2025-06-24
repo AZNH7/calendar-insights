@@ -1,0 +1,116 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Environment & Configuration
+.env
+.env.*
+!.env.example
+
+# Python
+.venv
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Documentation
+README.md
+docs/
+*.md
+!README.md
+
+# Testing
+.pytest_cache/
+.coverage
+.nyc_output
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Docker
+docker-compose.override.yml
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs & databases
+*.log
+*.sqlite
+local_db_data/
+
+# Docker & deployment
+docker-compose*.yml
+!docker-compose.yml
+Dockerfile*
+!Dockerfile
+*/backup_files_*/
+
+# Documentation & scripts
+*.md
+!README.md
+DOCS/
+docs/
+
+# Testing
+test*/
+*test*.py
+.pytest_cache/
+
+# Other
+cleanup*.fish
+backup*/
+monitor*/
