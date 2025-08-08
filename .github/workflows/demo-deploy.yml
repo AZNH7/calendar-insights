@@ -1,0 +1,124 @@
+name: Demo Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: europe-west3
+  SERVICE_NAME: calendar-insights-demo
+  REPOSITORY_NAME: calendar-insights-repo
+  DB_INSTANCE_NAME: calendar-insights-demo-db
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+    - name: Build and push Docker image
+      run: |
+        cd app-gcp
+        IMAGE_NAME="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.SERVICE_NAME }}"
+        docker build -t $IMAGE_NAME .
+        docker push $IMAGE_NAME
+
+    - name: Deploy Cloud Run service
+      run: |
+        cd app-gcp
+        IMAGE_NAME="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.SERVICE_NAME }}"
+        
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image $IMAGE_NAME \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --memory 2Gi \
+          --cpu 2 \
+          --timeout 900 \
+          --set-env-vars "POSTGRES_HOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }},POSTGRES_PORT=5432,ENVIRONMENT=demo" \
+          --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+          --set-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }}
+
+    - name: Update database schema
+      run: |
+        cd app-gcp
+        IMAGE_NAME="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.SERVICE_NAME }}"
+        
+        gcloud run jobs create schema-update-demo-job \
+          --image $IMAGE_NAME \
+          --region ${{ env.REGION }} \
+          --set-env-vars "POSTGRES_HOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }},POSTGRES_PORT=5432,ENVIRONMENT=demo" \
+          --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+          --set-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }} \
+          --command python3 \
+          --args "update_schema.py" \
+          --task-timeout 300 \
+          2>/dev/null || echo "Schema update job already exists"
+
+        gcloud run jobs execute schema-update-demo-job --region ${{ env.REGION }} --wait
+
+    - name: Set up demo data fetching job
+      run: |
+        cd app-gcp
+        IMAGE_NAME="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.SERVICE_NAME }}"
+        
+        gcloud run jobs create demo-fetch-job \
+          --image $IMAGE_NAME \
+          --region ${{ env.REGION }} \
+          --set-env-vars "POSTGRES_HOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }},POSTGRES_PORT=5432,ENVIRONMENT=demo" \
+          --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+          --set-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE_NAME }} \
+          --command python3 \
+          --args "dynamic_fetch.py" \
+          --task-timeout 1800 \
+          --memory 2Gi \
+          --cpu 2 \
+          2>/dev/null || echo "Demo fetch job already exists"
+
+    - name: Fetch demo data (last 30 days)
+      run: |
+        gcloud run jobs execute demo-fetch-job \
+          --region ${{ env.REGION }} \
+          --args="--days 30" \
+          --wait
+
+    - name: Get service URL
+      id: service-url
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format 'value(status.url)')
+        echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            body: `🎉 Demo deployment successful!\n\n📊 **Demo Dashboard**: ${{ steps.service-url.outputs.url }}\n\nThis demo deployment includes:\n- Last 30 days of calendar data\n- Updated schema\n- Ready for testing`
+          })
+
+    - name: Create deployment status
+      run: |
+        echo "Demo deployment completed successfully!"
+        echo "Demo URL: ${{ steps.service-url.outputs.url }}" 
