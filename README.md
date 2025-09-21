@@ -25,14 +25,7 @@ cd calendar-insights/app-gcp
 ```
 Access at: `https://your-service-url.run.app`
 
-### Option 2: Self-Hosted/AWS Deployment (TBD)
-```bash
-# Currently under development - TBD
-# git clone <repository-url>
-# cd calendar-insights/app
-# docker-compose up -d
-```
-Status: **To Be Determined** - Under active development
+
 
 ## 🎯 Deployment Options
 
@@ -41,7 +34,7 @@ Status: **To Be Determined** - Under active development
 | **GitHub Actions** | Teams, automation | 5 min | Auto-scaling | GCP |
 | **Local Docker** | Development, testing | 2 min | Single instance | Local |
 | **Manual GCP** | Production, control | 10 min | Full cloud | GCP |
-| **AWS RDS** | Enterprise, hybrid | TBD | TBD | AWS (Under development) |
+
 
 ### GitHub Actions (Automated)
 1. Go to **Actions** → **Run workflow**
@@ -60,8 +53,7 @@ Status: **To Be Determined** - Under active development
 # Cloud deployment
 cd app-gcp && ./deploy-with-options.sh
 
-# Self-hosted deployment (TBD - Under Development)
-# cd app && docker-compose up -d
+
 
 # Development mode
 cd app-gcp && streamlit run dashboard.py
@@ -71,7 +63,6 @@ cd app-gcp && streamlit run dashboard.py
 
 ### Prerequisites
 - Google Cloud Platform account (for app-gcp)
-- AWS account (for app/ with RDS)
 - Google Workspace admin access
 - Docker installed
 
@@ -79,8 +70,6 @@ cd app-gcp && streamlit run dashboard.py
 Set these in your deployment method:
 - `GCP_SERVICE_ACCOUNT_KEY` - Google Cloud credentials
 - `POSTGRES_PASSWORD` - Database password
-- `AWS_ACCESS_KEY_ID` - AWS credentials (for app/)
-- `AWS_SECRET_ACCESS_KEY` - AWS secret key (for app/)
 
 ### Google Calendar Setup
 1. Enable Google Calendar API in [Google Cloud Console](https://console.cloud.google.com)
@@ -98,15 +87,12 @@ graph TD
     E[Cloud Scheduler] --> B
     F[Cloud Run] --> D
     
-    G[AWS RDS] --> H[Self-Hosted App]
     I[Google Workspace] --> J[User Directory]
     J --> K[Identity Cross-Reference]
-    K --> H
 ```
 
 **Components:**
 - **Cloud App** (`app-gcp/`) - Production-ready, serverless, auto-scaling on GCP
-- **Self-Hosted App** (`app/`) - **TBD** - Enterprise-grade features under development
 
 ## 📊 Application Comparison
 
@@ -121,50 +107,9 @@ graph TD
   - Cloud Scheduler integration
   - Secret Manager security
 
-### 🏢 Self-Hosted App (`app/`) - Enterprise Hybrid (TBD)
-- **Status**: **Under Development - To Be Determined**
-- **Platform**: Docker + AWS RDS / Local PostgreSQL (Planned)
-- **Scaling**: Manual scaling, enterprise control (Planned)
-- **Database**: AWS RDS PostgreSQL / Local SQLite (Planned)
-- **Best For**: Enterprise environments, hybrid cloud, data governance (Planned)
-- **Planned Advanced Features**:
-  - **AWS Integration**: RDS PostgreSQL backend support (TBD)
-  - **User Directory Management**: Advanced user data processing (TBD)
-  - **Identity Cross-Reference**: Compare Google Workspace and directory data (TBD)
-  - **Department Analytics**: Sophisticated organizational insights (TBD)
-  - **Manager Hierarchy**: Leadership meeting pattern analysis (TBD)
-  - **Email Filtering**: Advanced exclusion rules and patterns (TBD)
-  - **Data Governance**: Local data control and compliance (TBD)
-  - **Custom Configurations**: Flexible YAML-based settings (TBD)
-  - **Development Environment**: Comprehensive dev tooling (TBD)
 
-## 📈 Enterprise Features (Self-Hosted App) - TBD
 
-> **Note**: All enterprise features for the self-hosted app are currently under development and marked as **To Be Determined (TBD)**.
 
-### 🔄 Data Integration & Cross-Reference (TBD)
-- **Google Workspace Integration**: Pull calendar and user data (TBD)
-- **User Directory Synchronization**: Cross-reference with organizational data (TBD)
-- **Department Mapping**: Automatic department and division assignment (TBD)
-- **Manager Hierarchy**: Identify and analyze management meeting patterns (TBD)
-
-### 🎯 Advanced Analytics (TBD)
-- **Multi-Department Analysis**: Compare meeting patterns across departments (TBD)
-- **Manager vs Individual Contributor**: Separate analytics for different roles (TBD)
-- **Meeting Size Optimization**: 1:1, small group, large meeting analysis (TBD)
-- **Time Block Analysis**: Focus time vs meeting time tracking (TBD)
-
-### ⚙️ Configuration Management (TBD)
-```yaml
-# Email exclusions (config/email_exclusions.yaml) - TBD
-# Configuration format under development
-```
-
-### 🛡️ Enterprise Security (TBD)
-- **Local Data Control**: Keep sensitive data on-premises (TBD)
-- **AWS Security**: Leverage AWS security controls and compliance (TBD)
-- **User Access Control**: Department-based access restrictions (TBD)
-- **Data Retention**: Configurable data retention policies (TBD)
 
 ## 🛠️ Development
 

@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  app-gcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=development
+      - DEBUG=true
+      # Database configuration for local PostgreSQL
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=calendar_insights
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
+      # Add your development environment variables here
+      # - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      # Mount credentials directory for local development
+      - ./credentials:/app/credentials:ro
+      # Mount config directory for configuration files
+      - ./config:/app/config:ro
+      # Mount logs directory for persistent logs
+      - ./logs:/app/logs
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  app-network:
+    driver: bridge
+
+# PostgreSQL database for local testing
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=calendar_insights
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d calendar_insights"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:

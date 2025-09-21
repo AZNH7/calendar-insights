@@ -10,14 +10,14 @@
 - `oauth2_calendar_service.py` - OAuth2 authentication helper
 
 ### 📝 Template Files (Safe to commit)
-- `service-account.json.template` - Template showing expected structure
+- `service-account.template.json` - Template showing expected structure
 - `README.md` - This file
 
 ## Setup Instructions:
 
 1. **For Service Account Authentication:**
    ```bash
-   cp service-account.json.template service-account.json
+   cp service-account.template.json service-account.json
    # Edit service-account.json with your real credentials
    ```
 
