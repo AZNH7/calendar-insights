@@ -1,63 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Security and Credentials - DO NOT COMMIT
-credentials/*.json
-**/credentials/*.json
-credentials/*.key
-**/credentials/*.key
-credentials/*.pem
-**/credentials/*.pem
-credentials/*.p12
-**/credentials/*.p12
-token.json
-**/token.json
-service-account.json
-**/service-account.json
-application_default_credentials.json
-**/application_default_credentials.json
-*.pem
-*.p12
-*.key
-.env
-.env.*
-.env.local
-.env.production
-.env.development
-.env.staging
-secrets/
-.secrets
-client_secret*.json
-**/client_secret*.json
-oauth2_credentials.json
-**/oauth2_credentials.json
-google_credentials.json
-**/google_credentials.json
-app-gcp/.env.production
-
-# Additional security patterns
-*.secret
-*.private
-gcp-key*.json
-*-key.json
-config.json
-local.json
-
-# Allow template files
-!credentials/*.template
-!**/credentials/*.template
-!credentials/README.md
-!**/credentials/README.md
-!credentials/*.py
-!**/credentials/*.py
-
-# macOS
-.DS_Store
-.DS_Store?
-
-# Distribution / packaging
+*.so
 .Python
 build/
 develop-eggs/
@@ -71,49 +16,86 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Environments
-.env
-.venv
-env/
+# Virtual environments
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Rope project settings
-.ropeproject
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# mkdocs documentation
-/site
+# Environment variables (SECURITY: Never commit secrets!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Logs
+*.log
+logs/
+log/
 
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# PyPI configuration file
-.pypirc
-
-
-# database files
+# Database
 *.db
-*.db.*
+*.sqlite
+*.sqlite3
 
-# json files
-*.json
+# Docker
+.dockerignore
+
+# Google Cloud credentials
+credentials/*.json
+!credentials/*.template
+!credentials/*.template.json
+service-account*.json
+!service-account*.template.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.pytest_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+local/
+dev-data/
+test-data/

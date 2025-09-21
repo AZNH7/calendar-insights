@@ -84,7 +84,7 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 2 \
     --timeout 900 \
     --set-env-vars "POSTGRES_HOST=/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME},POSTGRES_PORT=5432,ENVIRONMENT=production" \
-    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest,GOOGLE_API_KEY=google_api_key:latest" \
     --set-cloudsql-instances ${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME}
 
 # Update database schema
@@ -93,7 +93,7 @@ gcloud run jobs create schema-update-job \
     --image $IMAGE_NAME \
     --region $REGION \
     --set-env-vars "POSTGRES_HOST=/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME},POSTGRES_PORT=5432,ENVIRONMENT=production" \
-    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest,GOOGLE_API_KEY=google_api_key:latest" \
     --set-cloudsql-instances ${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME} \
     --command python3 \
     --args "update_schema.py" \
@@ -108,7 +108,7 @@ gcloud run jobs create dynamic-fetch-job \
     --image $IMAGE_NAME \
     --region $REGION \
     --set-env-vars "POSTGRES_HOST=/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME},POSTGRES_PORT=5432,ENVIRONMENT=production" \
-    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest" \
+    --set-secrets "POSTGRES_DB=postgres_db:latest,POSTGRES_USER=postgres_user:latest,POSTGRES_PASSWORD=postgres_password:latest,GOOGLE_API_KEY=google_api_key:latest" \
     --set-cloudsql-instances ${PROJECT_ID}:${REGION}:${DB_INSTANCE_NAME} \
     --command python3 \
     --args "dynamic_fetch.py" \

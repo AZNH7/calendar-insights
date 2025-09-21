@@ -449,7 +449,17 @@ def display_quick_stats():
 
 def main():
     """Main dashboard function with performance optimizations"""
-    st.title("📊 Enhanced Calendar Insights Dashboard")
+    st.title("📊 Calendar Insights Dashboard")
+    
+    # Add AI Chat button in the header
+    col1, col2, col3 = st.columns([3, 1, 1])
+    with col2:
+        if st.button("🤖 AI Chat Assistant", use_container_width=True, help="Get AI-powered insights about your meeting data"):
+            st.switch_page("pages/ai_chat.py")
+    with col3:
+        if st.button("📊 Dashboard", use_container_width=True, help="Return to main dashboard"):
+            st.switch_page("dashboard.py")
+    
     st.markdown("---")
     
     # Quick stats first (cached and fast)
