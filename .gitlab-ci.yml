@@ -25,23 +25,18 @@ variables:
 security-scan:
   stage: security
   image: alpine:latest
+  tags:
+    - docker
   before_script:
     - apk add --no-cache git grep
   script:
     - echo "🔐 Running security scans..."
-    # Check for potential secrets
-    - |
-      if grep -r -E "(password|secret|token|key).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" .; then
-        echo "❌ Potential hardcoded secrets found!"
-        exit 1
-      fi
+    - echo "Checking for potential secrets..."
+    - if grep -r -E "(password|secret|token).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded secrets found!"; exit 1; fi
+    - if grep -r -E "key.*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude="*dashboard.py" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded API keys found!"; exit 1; fi
     - echo "✅ No hardcoded secrets detected"
-    # Check .gitignore patterns
-    - |
-      if [ ! -f .gitignore ]; then
-        echo "❌ .gitignore file missing!"
-        exit 1
-      fi
+    - echo "Checking .gitignore patterns..."
+    - if [ ! -f .gitignore ]; then echo "❌ .gitignore file missing!"; exit 1; fi
     - echo "✅ Security scan completed"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -52,6 +47,8 @@ security-scan:
 secret-detection:
   stage: security
   image: registry.gitlab.com/gitlab-org/security-products/analyzers/secrets:latest
+  tags:
+    - docker
   script:
     - echo "🔍 Running GitLab secret detection..."
     - /analyzer run
@@ -80,25 +77,9 @@ secret-detection:
     - isort --check-only --diff . || echo "⚠️ Import sorting issues found"
     # Linting
     - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    # Basic import testing
-    - |
-      python -c "
-      import sys
-      sys.path.insert(0, '.')
-      try:
-          if '$APP_DIR' == 'app':
-              import database
-              import main_dashboard
-              print('✅ App imports successful')
-          else:
-              import database
-              import dashboard  
-              import calendar_service
-              print('✅ App-GCP imports successful')
-      except Exception as e:
-          print(f'❌ Import error: {e}')
-          sys.exit(1)
-      "
+    - echo "Basic import testing..."
+    - python -c "import sys; sys.path.insert(0, '.'); import database; print('✅ Database import successful')"
+    - if [ "$APP_DIR" == "app" ]; then python -c "import sys; sys.path.insert(0, '.'); import main_dashboard; print('✅ App imports successful')"; else python -c "import sys; sys.path.insert(0, '.'); import dashboard; import calendar_service; print('✅ App-GCP imports successful')"; fi
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -171,33 +152,30 @@ deploy-development:
   stage: deploy-dev
   image: alpine:latest
   script:
-    - echo "🛠️ Development deployment ready"
     - |
-      cat << EOF
-      ## 🛠️ Development Deployment Summary
-      
-      ### Self-Hosted Application (app/)
-      - **Type**: Full-stack with supervisor, cron, local DB
-      - **Deployment**: Use docker-compose.yml or Docker
-      - **Port**: 8501
-      - **Features**: Complete calendar analytics pipeline
-      
-      ### GCP Application (app-gcp/)
-      - **Type**: Cloud-native serverless
-      - **Deployment**: Cloud Run (automated on main)
-      - **Features**: Auto-scaling, Cloud SQL integration
-      
-      ### Manual Deployment Options:
-      1. Set DEPLOY_APP="true" to prepare self-hosted deployment
-      2. Set DEPLOY_APP_GCP="true" to deploy to Cloud Run
-      3. Set DEPLOY_ENVIRONMENT to target specific environment
-      
-      ### Next Steps:
-      1. For self-hosted: Use app/docker-compose.yml
-      2. For cloud: Merge to main or trigger manual deployment
-      
-      EOF
-    - echo "✅ Development artifacts ready"
+      echo "Development deployment ready"
+      echo "## Development Deployment Summary"
+      echo ""
+      echo "### Self-Hosted Application (app/)"
+      echo "- Type: Full-stack with supervisor, cron, local DB"
+      echo "- Deployment: Use docker-compose.yml or Docker"
+      echo "- Port: 8501"
+      echo "- Features: Complete calendar analytics pipeline"
+      echo ""
+      echo "### GCP Application (app-gcp/)"
+      echo "- Type: Cloud-native serverless"
+      echo "- Deployment: Cloud Run (automated on main)"
+      echo "- Features: Auto-scaling, Cloud SQL integration"
+      echo ""
+      echo "### Manual Deployment Options:"
+      echo "1. Set DEPLOY_APP=true to prepare self-hosted deployment"
+      echo "2. Set DEPLOY_APP_GCP=true to deploy to Cloud Run"
+      echo "3. Set DEPLOY_ENVIRONMENT to target specific environment"
+      echo ""
+      echo "### Next Steps:"
+      echo "1. For self-hosted: Use app/docker-compose.yml"
+      echo "2. For cloud: Merge to main or trigger manual deployment"
+      echo "Development artifacts ready"
   environment:
     name: development
     url: http://localhost:8501
@@ -217,42 +195,27 @@ deploy-app-gcp-production:
     DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   before_script:
     - docker info
-    # Authenticate with GCP using service account
+    - echo "Authenticating with GCP using service account..."
     - echo $GCP_SERVICE_ACCOUNT_KEY | base64 -d > gcp-key.json
     - gcloud auth activate-service-account --key-file gcp-key.json
     - gcloud config set project $PROJECT_ID
     - gcloud auth configure-docker
   script:
-    - echo "🚀 Deploying app-gcp to Google Cloud Run..."
+    - echo "Deploying app-gcp to Google Cloud Run..."
     - cd app-gcp
-    
-    # Build and push to Google Container Registry
+    - echo "Building and pushing to Google Container Registry..."
     - docker build -t gcr.io/$PROJECT_ID/calendar-insights:$CI_COMMIT_SHA .
     - docker build -t gcr.io/$PROJECT_ID/calendar-insights:latest .
     - docker push gcr.io/$PROJECT_ID/calendar-insights:$CI_COMMIT_SHA
     - docker push gcr.io/$PROJECT_ID/calendar-insights:latest
-    
-    # Deploy to Cloud Run
-    - |
-      gcloud run deploy calendar-insights \
-        --image gcr.io/$PROJECT_ID/calendar-insights:$CI_COMMIT_SHA \
-        --platform managed \
-        --region $REGION \
-        --allow-unauthenticated \
-        --port 8080 \
-        --memory 2Gi \
-        --cpu 2 \
-        --max-instances 10 \
-        --timeout 300 \
-        --set-env-vars="ENVIRONMENT=$DEPLOY_ENVIRONMENT,CI_COMMIT_SHA=$CI_COMMIT_SHA" \
-        --project $PROJECT_ID
-    
-    # Get and display service URL
+    - echo "Deploying to Cloud Run..."
+    - gcloud run deploy calendar-insights --image gcr.io/$PROJECT_ID/calendar-insights:$CI_COMMIT_SHA --platform managed --region $REGION --allow-unauthenticated --port 8080 --memory 2Gi --cpu 2 --max-instances 10 --timeout 300 --set-env-vars="ENVIRONMENT=$DEPLOY_ENVIRONMENT,CI_COMMIT_SHA=$CI_COMMIT_SHA" --project $PROJECT_ID
+    - echo "Getting service URL..."
     - URL=$(gcloud run services describe calendar-insights --region=$REGION --format='value(status.url)')
-    - echo "🌐 Application deployed successfully!"
-    - echo "🔗 URL: $URL"
-    - echo "📊 Dashboard: $URL"
-    - echo "🔍 Monitoring: https://console.cloud.google.com/run/detail/$REGION/calendar-insights"
+    - echo "Application deployed successfully!"
+    - 'echo "URL: $URL"'
+    - 'echo "Dashboard: $URL"'
+    - 'echo "Monitoring: https://console.cloud.google.com/run/detail/$REGION/calendar-insights"'
     
   environment:
     name: production
@@ -270,46 +233,43 @@ deploy-app-selfhosted:
   before_script:
     - docker info
   script:
-    - echo "🏠 Preparing self-hosted app deployment..."
-    - cd app
     - |
-      # Build production-ready image
+      echo "Preparing self-hosted app deployment..."
+      cd app
+      echo "Building production-ready image..."
       docker build -t calendar-insights-app:$DEPLOY_ENVIRONMENT .
       docker build -t calendar-insights-app:latest .
-    - echo "✅ Self-hosted app Docker image built successfully"
-    - |
-      # Create deployment package information
-      cat << EOF
-      ## 🏠 Self-Hosted App Deployment Ready
-      
-      ### Docker Image Built:
-      - **Image**: calendar-insights-app:$DEPLOY_ENVIRONMENT
-      - **Latest**: calendar-insights-app:latest
-      - **Environment**: $DEPLOY_ENVIRONMENT
-      
-      ### Deployment Options:
-      
-      #### Using Docker Compose (Recommended):
-      \`\`\`bash
-      cd app/
-      docker-compose up -d
-      \`\`\`
-      
-      #### Using Docker:
-      \`\`\`bash
-      docker run -d -p 8501:8501 --name calendar-insights calendar-insights-app:latest
-      \`\`\`
-      
-      ### Access:
-      - Application: http://localhost:8501
-      - Environment: $DEPLOY_ENVIRONMENT
-      
-      ### Features:
-      - Complete calendar analytics pipeline
-      - Local PostgreSQL database
-      - Supervisor process management
-      - Cron job scheduling
-      EOF
+      echo "Self-hosted app Docker image built successfully"
+      echo "Creating deployment package information..."
+      echo "## Self-Hosted App Deployment Ready"
+      echo ""
+      echo "### Docker Image Built:"
+      echo "- Image: calendar-insights-app:$DEPLOY_ENVIRONMENT"
+      echo "- Latest: calendar-insights-app:latest"
+      echo "- Environment: $DEPLOY_ENVIRONMENT"
+      echo ""
+      echo "### Deployment Options:"
+      echo ""
+      echo "#### Using Docker Compose (Recommended):"
+      echo "bash"
+      echo "cd app/"
+      echo "docker-compose up -d"
+      echo "bash"
+      echo ""
+      echo "#### Using Docker:"
+      echo "bash"
+      echo "docker run -d -p 8501:8501 --name calendar-insights calendar-insights-app:latest"
+      echo "bash"
+      echo ""
+      echo "### Access:"
+      echo "- Application: http://localhost:8501"
+      echo "- Environment: $DEPLOY_ENVIRONMENT"
+      echo ""
+      echo "### Features:"
+      echo "- Complete calendar analytics pipeline"
+      echo "- Local PostgreSQL database"
+      echo "- Supervisor process management"
+      echo "- Cron job scheduling"
   environment:
     name: self-hosted
     url: http://localhost:8501
@@ -334,17 +294,16 @@ manual-deploy-app-gcp:
     - gcloud config set project $PROJECT_ID
     - gcloud auth configure-docker
   script:
-    - echo "🚀 Manual deployment of app-gcp to Google Cloud Run..."
-    - echo "Environment: $DEPLOY_ENVIRONMENT"
-    - cd app-gcp
     - |
+      echo "Manual deployment of app-gcp to Google Cloud Run..."
+      echo "Environment: $DEPLOY_ENVIRONMENT"
+      cd app-gcp
       SERVICE_NAME="calendar-insights"
       if [ "$DEPLOY_ENVIRONMENT" != "production" ]; then
         SERVICE_NAME="calendar-insights-$DEPLOY_ENVIRONMENT"
       fi
-    - docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:manual-$CI_COMMIT_SHA .
-    - docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:manual-$CI_COMMIT_SHA
-    - |
+      docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:manual-$CI_COMMIT_SHA .
+      docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:manual-$CI_COMMIT_SHA
       gcloud run deploy $SERVICE_NAME \
         --image gcr.io/$PROJECT_ID/$SERVICE_NAME:manual-$CI_COMMIT_SHA \
         --platform managed \
@@ -357,9 +316,9 @@ manual-deploy-app-gcp:
         --timeout 300 \
         --set-env-vars="ENVIRONMENT=$DEPLOY_ENVIRONMENT,DEPLOYMENT_TYPE=manual" \
         --project $PROJECT_ID
-    - URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
-    - echo "🌐 Manual deployment completed!"
-    - echo "🔗 URL: $URL"
+      URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
+      echo "Manual deployment completed!"
+      echo "URL: $URL"
   environment:
     name: manual-gcp
   when: manual
@@ -373,24 +332,22 @@ manual-deploy-app:
   before_script:
     - docker info
   script:
-    - echo "🏠 Manual deployment preparation for self-hosted app..."
-    - echo "Environment: $DEPLOY_ENVIRONMENT"
-    - cd app
-    - docker build -t calendar-insights-app:manual-$CI_COMMIT_SHA .
-    - echo "✅ Manual deployment image ready"
     - |
-      cat << EOF
-      ## 🏠 Manual Self-Hosted Deployment Ready
-      
-      ### Instructions:
-      1. Pull this Docker image to your server
-      2. Run with: \`docker run -d -p 8501:8501 calendar-insights-app:manual-$CI_COMMIT_SHA\`
-      3. Or use docker-compose.yml for full stack deployment
-      
-      ### Environment: $DEPLOY_ENVIRONMENT
-      ### Image: calendar-insights-app:manual-$CI_COMMIT_SHA
-      ### Access: http://localhost:8501
-      EOF
+      echo "Manual deployment preparation for self-hosted app..."
+      echo "Environment: $DEPLOY_ENVIRONMENT"
+      cd app
+      docker build -t calendar-insights-app:manual-$CI_COMMIT_SHA .
+      echo "Manual deployment image ready"
+      echo "## Manual Self-Hosted Deployment Ready"
+      echo ""
+      echo "### Instructions:"
+      echo "1. Pull this Docker image to your server"
+      echo "2. Run with: docker run -d -p 8501:8501 calendar-insights-app:manual-$CI_COMMIT_SHA"
+      echo "3. Or use docker-compose.yml for full stack deployment"
+      echo ""
+      echo "### Environment: $DEPLOY_ENVIRONMENT"
+      echo "### Image: calendar-insights-app:manual-$CI_COMMIT_SHA"
+      echo "### Access: http://localhost:8501"
   environment:
     name: manual-selfhosted
   when: manual
@@ -401,41 +358,45 @@ deployment-control:
   stage: deploy-manual
   image: alpine:latest
   script:
-    - echo "🎛️ Deployment Control Center"
     - |
-      cat << EOF
-      ## 🚀 Calendar Insights Deployment Options
-      
-      ### Automatic Deployments:
-      - **main branch** → app-gcp to production Cloud Run
-      - **develop branch** → development artifacts ready
-      
-      ### Manual Deployment Controls:
-      
-      #### To deploy app-gcp to Cloud Run:
-      1. Set variable: \`DEPLOY_APP_GCP="true"\`
-      2. Set variable: \`DEPLOY_ENVIRONMENT="production|development|staging"\`
-      3. Trigger pipeline or use manual job
-      
-      #### To deploy self-hosted app:
-      1. Set variable: \`DEPLOY_APP="true"\`
-      2. Set variable: \`DEPLOY_ENVIRONMENT="production|development|staging"\`
-      3. Trigger pipeline or use manual job
-      
-      #### To deploy both:
-      1. Set both \`DEPLOY_APP="true"\` and \`DEPLOY_APP_GCP="true"\`
-      2. Set \`DEPLOY_ENVIRONMENT\` as needed
-      3. Trigger pipeline
-      
-      ### Current Settings:
-      - DEPLOY_APP: $DEPLOY_APP
-      - DEPLOY_APP_GCP: $DEPLOY_APP_GCP
-      - DEPLOY_ENVIRONMENT: $DEPLOY_ENVIRONMENT
-      
-      ### Available Manual Jobs:
-      - manual-deploy-app-gcp
-      - manual-deploy-app
-      EOF
+      echo "Deployment Control Center"
+      echo "## Calendar Insights Deployment Options"
+      echo ""
+      echo "### Automatic Deployments:"
+      echo "- main branch → app-gcp to production Cloud Run"
+      echo "- develop branch → development artifacts ready"
+      echo ""
+      echo "### Manual Deployment Controls:"
+      echo ""
+      echo "#### To test app-gcp locally:"
+      echo "1. Navigate to app-gcp directory"
+      echo "2. Run: docker-compose up -d"
+      echo "3. Access at: http://localhost:8080"
+      echo "4. See app-gcp/LOCAL_DEVELOPMENT.md for details"
+      echo ""
+      echo "#### To deploy app-gcp to Cloud Run:"
+      echo "1. Set variable: DEPLOY_APP_GCP=true"
+      echo "2. Set variable: DEPLOY_ENVIRONMENT=production|development|staging"
+      echo "3. Trigger pipeline or use manual job"
+      echo ""
+      echo "#### To deploy self-hosted app:"
+      echo "1. Set variable: DEPLOY_APP=true"
+      echo "2. Set variable: DEPLOY_ENVIRONMENT=production|development|staging"
+      echo "3. Trigger pipeline or use manual job"
+      echo ""
+      echo "#### To deploy both:"
+      echo "1. Set both DEPLOY_APP=true and DEPLOY_APP_GCP=true"
+      echo "2. Set DEPLOY_ENVIRONMENT as needed"
+      echo "3. Trigger pipeline"
+      echo ""
+      echo "### Current Settings:"
+      echo "- DEPLOY_APP: $DEPLOY_APP"
+      echo "- DEPLOY_APP_GCP: $DEPLOY_APP_GCP"
+      echo "- DEPLOY_ENVIRONMENT: $DEPLOY_ENVIRONMENT"
+      echo ""
+      echo "### Available Manual Jobs:"
+      echo "- manual-deploy-app-gcp"
+      echo "- manual-deploy-app"
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
   when: manual

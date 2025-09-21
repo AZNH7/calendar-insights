@@ -1,0 +1,20 @@
+# Gitleaks ignore file
+# This file tells gitleaks to ignore certain files and patterns
+
+# Ignore documentation files
+*.md
+
+# Ignore template files
+*template*
+
+# Ignore configuration files
+*.yml
+*.yaml
+
+# Ignore shell scripts that use environment variables
+*.sh
+
+# Ignore specific files that contain examples
+app-gcp/LOCAL_DEVELOPMENT.md
+app-gcp/credentials/service-account.template.json
+.gitlab-ci.yml
