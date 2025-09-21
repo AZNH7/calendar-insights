@@ -33,7 +33,7 @@ on:
         type: boolean
 
 env:
-  PROJECT_ID: cal-insights-460511
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: europe-west3
 
 jobs:
@@ -56,8 +56,10 @@ jobs:
 
       - name: Check for hardcoded secrets
         run: |
-          # Check for common secret patterns
-          if grep -r -E "(password|secret|token|key).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" .; then
+          # Check for common secret patterns (excluding templates and examples)
+          if grep -r -E "(password|secret|token|key).*[:=]\s*['\"][^'\"]{8,}" \
+            --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude="*example*" \
+            --exclude=".github" --exclude=".gitlab" .; then
             echo "❌ Potential hardcoded secrets found!"
             exit 1
           fi

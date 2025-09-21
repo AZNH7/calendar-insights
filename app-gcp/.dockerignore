@@ -108,6 +108,7 @@ docs/
 # Testing
 test*/
 *test*.py
+!generate_test_data.py
 .pytest_cache/
 
 # Other

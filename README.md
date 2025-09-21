@@ -11,19 +11,30 @@
 🔍 **Meeting Analytics** - Daily, weekly, monthly trends and patterns  
 👥 **Participant Insights** - Department and team collaboration analysis  
 📊 **Interactive Dashboard** - Filter by time, departments, meeting types  
+🤖 **AI Chat Assistant** - Ask questions about your meeting data in natural language  
 📈 **Export Reports** - CSV downloads and visual report generation  
 ⚡ **Real-time Updates** - Automated data fetching and synchronization  
 🔒 **Enterprise Security** - OAuth2 integration with Google Workspace  
 
 ## 🚀 Quick Deploy
 
-### Option 1: Cloud Deployment (Recommended)
+### Option 1: Easy Setup (Recommended)
 ```bash
 git clone <repository-url>
 cd calendar-insights/app-gcp
-./deploy-with-options.sh
+./deploy.sh
+```
+Follow the interactive setup guide!
+
+### Option 2: Manual Cloud Deployment
+```bash
+git clone <repository-url>
+cd calendar-insights/app-gcp
+./scripts/cloud-deploy.sh
 ```
 Access at: `https://your-service-url.run.app`
+
+📖 **Need help?** Check out our [Complete Setup Guide](SETUP_GUIDE.md), [Security Guide](SECURITY.md), or [CI/CD Guide](CI_CD_GUIDE.md)
 
 
 
@@ -51,12 +62,13 @@ Access at: `https://your-service-url.run.app`
 ### Manual Commands
 ```bash
 # Cloud deployment
-cd app-gcp && ./deploy-with-options.sh
+cd app-gcp && ./deploy.sh cloud
 
+# Local development
+cd app-gcp && ./deploy.sh local
 
-
-# Development mode
-cd app-gcp && streamlit run dashboard.py
+# AI setup only
+cd app-gcp && ./deploy.sh ai
 ```
 
 ## ⚙️ Configuration
@@ -69,7 +81,12 @@ cd app-gcp && streamlit run dashboard.py
 ### Required Secrets
 Set these in your deployment method:
 - `GCP_SERVICE_ACCOUNT_KEY` - Google Cloud credentials
-- `POSTGRES_PASSWORD` - Database password
+- `POSTGRES_PASSWORD` - Database password (⚠️ **NO DEFAULT** - must be set)
+- `GOOGLE_API_KEY` - Google AI API key (for AI Chat Assistant)
+- `GOOGLE_CLIENT_SECRET` - OAuth client secret
+- `SECRET_KEY` - Application security key
+
+🔒 **Security Note**: Never use default passwords in production! See [SECURITY.md](SECURITY.md) for best practices.
 
 ### Google Calendar Setup
 1. Enable Google Calendar API in [Google Cloud Console](https://console.cloud.google.com)
@@ -103,6 +120,7 @@ graph TD
 - **Best For**: Quick deployment, cloud-native teams
 - **Features**: 
   - Streamlined calendar analytics
+  - AI Chat Assistant for natural language queries
   - Automated daily data fetching
   - Cloud Scheduler integration
   - Secret Manager security
@@ -110,6 +128,30 @@ graph TD
 
 
 
+
+## 🤖 AI Chat Assistant
+
+Ask intelligent questions about your meeting data using natural language powered by Google's Agent Development Kit (ADK) and Gemini models.
+
+### ✨ Features
+- **🧠 Intelligent Analysis**: Meeting pattern recognition, efficiency assessment, organizational insights
+- **💬 Natural Language Interface**: Ask questions in plain English with contextual responses
+- **📊 Real-time Data Integration**: Works with your live calendar data
+- **🔍 Comprehensive Metrics**: Access to all meeting data including attendance, duration, and efficiency scores
+
+### 💡 Example Questions
+- **"Which user has the most meetings?"**
+- **"What are our meeting efficiency patterns?"**
+- **"How many one-on-one meetings do we have?"**
+- **"Which department has the most meetings?"**
+- **"What trends do you see in our meeting data?"**
+- **"What's our average meeting duration?"**
+
+### 🚀 Quick Setup
+1. Get a Google AI API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Set the `GOOGLE_API_KEY` environment variable
+3. Deploy with AI Chat enabled
+4. Click "🤖 AI Chat Assistant" in the dashboard
 
 ## 🛠️ Development
 

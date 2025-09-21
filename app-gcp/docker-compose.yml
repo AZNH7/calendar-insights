@@ -1,12 +1,35 @@
 version: '3.8'
 
 services:
+  # PostgreSQL database for local testing
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=calendar_insights
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d calendar_insights"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Calendar Insights Application
   app-gcp:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       - PORT=8080
       - ENVIRONMENT=development
@@ -16,7 +39,9 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=calendar_insights
       - POSTGRES_USER=dev_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # AI Chat configuration (from .env file)
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       # Add your development environment variables here
       # - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
@@ -42,26 +67,6 @@ services:
 networks:
   app-network:
     driver: bridge
-
-# PostgreSQL database for local testing
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=calendar_insights
-      - POSTGRES_USER=dev_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev_user -d calendar_insights"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
 
 volumes:
   postgres_data:

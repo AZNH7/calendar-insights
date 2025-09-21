@@ -9,7 +9,7 @@ stages:
   - deploy-manual
 
 variables:
-  PROJECT_ID: "cal-insights-460511"
+  PROJECT_ID: $GCP_PROJECT_ID
   REGION: "europe-west3"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
@@ -32,8 +32,8 @@ security-scan:
   script:
     - echo "🔐 Running security scans..."
     - echo "Checking for potential secrets..."
-    - if grep -r -E "(password|secret|token).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded secrets found!"; exit 1; fi
-    - if grep -r -E "key.*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude="*dashboard.py" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded API keys found!"; exit 1; fi
+    - if grep -r -E "(password|secret|token).*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude="*example*" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded secrets found!"; exit 1; fi
+    - if grep -r -E "key.*[:=]\s*['\"][^'\"]{8,}" --exclude-dir=.git --exclude="*.md" --exclude="*template*" --exclude="*example*" --exclude="*dashboard.py" --exclude=".gitlab-ci.yml" .; then echo "❌ Potential hardcoded API keys found!"; exit 1; fi
     - echo "✅ No hardcoded secrets detected"
     - echo "Checking .gitignore patterns..."
     - if [ ! -f .gitignore ]; then echo "❌ .gitignore file missing!"; exit 1; fi
