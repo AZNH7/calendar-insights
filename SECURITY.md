@@ -144,7 +144,7 @@ POSTGRES_PASSWORD=your-secure-generated-password
 ### 3. Exposed API Keys
 ```bash
 # ❌ BAD - in code
-api_key = "AIzaSyA3wpBzdpVjaZqkyMdXI34VyORw0l5Ym1A"
+api_key = "1234567890qwertyuiopasdfghjklzxcvbnm"
 
 # ✅ GOOD - in environment
 api_key = os.getenv('GOOGLE_API_KEY')
