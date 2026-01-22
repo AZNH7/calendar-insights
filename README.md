@@ -20,7 +20,7 @@
 
 ### Option 1: Easy Setup (Recommended)
 ```bash
-git clone <repository-url>
+git clone git@github.com:AZNH7/calendar-insights.git
 cd calendar-insights/app-gcp
 ./deploy.sh
 ```
@@ -28,7 +28,7 @@ Follow the interactive setup guide!
 
 ### Option 2: Manual Cloud Deployment
 ```bash
-git clone <repository-url>
+git clone git@github.com:AZNH7/calendar-insights.git
 cd calendar-insights/app-gcp
 ./scripts/cloud-deploy.sh
 ```

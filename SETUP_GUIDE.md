@@ -18,7 +18,7 @@ This guide will help you set up Calendar Insights from scratch, whether you're d
 
 ### 1. Clone the Repository
 ```bash
-git clone <repository-url>
+git clone git@github.com:AZNH7/calendar-insights.git
 cd calendar-insights/app-gcp
 ```
 
